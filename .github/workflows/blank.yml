@@ -1,0 +1,58 @@
+name: AxolotlVM Setup
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Update System
+        run: |
+          sudo apt update && sudo apt upgrade -y
+
+      - name: Install Tools
+        run: |
+          sudo apt install -y dropbear curl wget unzip
+
+      - name: Set Root Password
+        run: |
+          echo "root:root" | sudo chpasswd
+
+      - name: Start Dropbear on Port 2222
+        run: |
+          echo "Starting Dropbear SSH on port 2222..."
+          sudo /usr/sbin/dropbear -E -F -p 2222 &
+
+      - name: Setup Playit Agent
+        run: |
+          echo "Installing Playit Agent..."
+          wget https://github.com/playit-cloud/playit-agent/releases/latest/download/playit-linux-amd64 -O playit
+          chmod +x playit
+          echo "Starting Playit tunnel..."
+          ./playit & sleep 15
+          echo "====== Playit Logs ======"
+          cat nohup.out || true
+
+      - name: Setup SSHx Fallback
+        run: |
+          echo "Installing SSHx..."
+          curl -sSf https://sshx.io/get | sh || true
+
+      - name: Show IP Info
+        run: |
+          echo "IPv4:"
+          curl -4 ifconfig.co || true
+          echo
+          echo "IPv6:"
+          curl -6 ifconfig.co || true
+
+      - name: Keep Workflow Alive
+        run: |
+          echo "Workflow alive, tunnels running..."
+          while true; do
+            sleep 60
+            echo "[KeepAlive] still running at $(date)"
+          done
