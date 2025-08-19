@@ -1,0 +1,55 @@
+name: vps
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Update System
+        run: |
+          sudo apt-get update -y
+          sudo apt-get upgrade -y
+
+      - name: Install Tools
+        run: |
+          sudo apt-get install -y dropbear wget curl unzip
+
+      - name: Set Root Password
+        run: |
+          echo "root:root" | sudo chpasswd
+
+      - name: Start Dropbear on Port 22
+        run: |
+          echo "Starting Dropbear SSH..."
+          sudo /usr/sbin/dropbear -p 22 -R -F >/dev/null 2>&1 &
+
+      - name: Setup Playit Agent
+        run: |
+          echo "Installing Playit Agent..."
+          wget https://github.com/playit-cloud/playit-agent/releases/latest/download/playit-linux-amd64 -O playit
+          chmod +x playit
+          echo "Starting Playit tunnel..."
+          nohup ./playit > playit.log 2>&1 &
+          sleep 10
+          echo "====== IMPORTANT ======"
+          grep -m 1 "https://playit.gg" playit.log || echo "⚠️ No Playit link found. Check playit.log."
+          echo "======================="
+
+      - name: Setup SSHx Fallback
+        run: |
+          echo "Setting up SSHx fallback..."
+          curl -sSf https://sshx.io/get | sh || echo "⚠️ SSHx setup failed"
+
+      - name: Show IP Info
+        run: |
+          echo "IP information:"
+          curl -s ifconfig.me || true
+
+      - name: Keep Workflow Alive
+        run: |
+          echo "Workflow will be kept alive. Connect via Playit link above or SSHx fallback."
+          while true; do sleep 300; done
